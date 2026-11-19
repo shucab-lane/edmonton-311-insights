@@ -1,0 +1,20 @@
+[project]
+name = "edmonton-311-insights"
+version = "1.0.0"
+description = "ETL pipeline, SQL analytics and ML forecasting over City of Edmonton 311 open data"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B017"]
+
+[tool.ruff.lint.per-file-ignores]
+# The dashboard embeds an HTML template; long lines there are prose, not code
+"pipeline/dashboard.py" = ["E501"]
