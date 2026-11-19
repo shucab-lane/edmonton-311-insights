@@ -45,7 +45,7 @@ def volume_chart(fc: ForecastResult) -> go.Figure:
     fig.add_scatter(x=hist["day"], y=hist["7-day average"], name="7-day average", line=dict(width=2.5, color="#2563eb"))
     fig.add_scatter(x=fc.future.index, y=fc.future.values, name="Forecast (next 7 days)",
                     line=dict(width=2.5, color="#dc2626", dash="dot"), mode="lines+markers")
-    fig.update_layout(title="Daily 311 requests with 7-day forecast", yaxis_title="Requests per day")
+    fig.update_layout(title="Daily requests, with a 7-day forecast", yaxis_title="Requests per day")
     return fig
 
 
@@ -62,7 +62,7 @@ def backtest_chart(fc: ForecastResult) -> go.Figure:
 
 def areas_chart(df: pd.DataFrame) -> go.Figure:
     fig = px.line(df, x="month", y="requests", color="service_area", markers=False)
-    fig.update_layout(title="Monthly requests: 6 busiest service areas", yaxis_title="Requests", xaxis_title=None, legend_title=None)
+    fig.update_layout(title="Busiest departments by month", yaxis_title="Requests", xaxis_title=None, legend_title=None)
     return fig
 
 
@@ -71,7 +71,7 @@ def channel_chart(df: pd.DataFrame) -> go.Figure:
     d = df.assign(channel=df["interaction_channel"].where(df["interaction_channel"].isin(top), "Other"))
     d = d.groupby(["month", "channel"], as_index=False)["pct"].sum()
     fig = px.area(d, x="month", y="pct", color="channel")
-    fig.update_layout(title="How residents contact 311 (share of requests by channel)", yaxis_title="% of requests",
+    fig.update_layout(title="How people contact 311 (%)", yaxis_title="% of requests",
                       xaxis_title=None, legend_title=None, yaxis_range=[0, 100])
     return fig
 
@@ -81,7 +81,7 @@ def resolution_chart(df: pd.DataFrame) -> go.Figure:
     d = d.assign(median_days=(d["median_hours"] / 24).round(1))
     fig = px.bar(d, x="median_days", y="service_area", orientation="h", text="median_days")
     fig.update_traces(marker_color="#16a34a", textposition="outside")
-    fig.update_layout(title="Median time to close a request (recent window)", xaxis_title="Days", yaxis_title=None,
+    fig.update_layout(title="Median days to close a request", xaxis_title="Days", yaxis_title=None,
                       height=460)
     return fig
 
@@ -91,7 +91,7 @@ def map_chart(df: pd.DataFrame) -> go.Figure:
     fig = px.scatter_map(d, lat="lat", lon="lon", size="requests", color="requests", hover_name="neighbourhood",
                          hover_data={"ward": True, "requests": True, "lat": False, "lon": False},
                          color_continuous_scale="Blues", size_max=28, zoom=9.4, map_style="carto-positron")
-    fig.update_layout(title="Requests by neighbourhood (recent window)", height=520, margin=dict(l=0, r=0, t=40, b=0))
+    fig.update_layout(title="Requests by neighbourhood (last 60 days)", height=520, margin=dict(l=0, r=0, t=40, b=0))
     return fig
 
 
@@ -118,12 +118,12 @@ def build(path: Path, stats: dict, fc: ForecastResult, areas: pd.DataFrame, chan
     ]
     top_types = top_types.assign(requests=top_types["requests"].astype(int))
     kpis = [
-        (f"{stats['total_requests']:,}", f"requests analyzed ({stats['first_day']} to {stats['last_day']})"),
-        (f"{stats['avg_daily']:,.0f}", "requests per day on average"),
-        (f"{fc.improvement_pct:.0f}%", "lower forecast error than the seasonal baseline"),
-        (f"{stats['top_channel_pct']:.0f}%", f"of last month's requests came by {stats['top_channel']}"),
+        ("Requests since 2023", f"{stats['total_requests']:,}"),
+        ("Per day (average)", f"{stats['avg_daily']:,.0f}"),
+        ("Forecast, next 7 days", f"{fc.future.mean():,.0f}/day"),
+        (f"By {stats['top_channel'].lower()} last month", f"{stats['top_channel_pct']:.0f}%"),
     ]
-    kpi_html = "".join(f'<div class="kpi"><b>{v}</b><span>{html.escape(t)}</span></div>' for v, t in kpis)
+    kpi_html = "".join(f'<div class="kpi"><span>{html.escape(t)}</span><b>{v}</b></div>' for t, v in kpis)
 
     page = f"""<!doctype html>
 <html lang="en"><head>
@@ -131,71 +131,57 @@ def build(path: Path, stats: dict, fc: ForecastResult, areas: pd.DataFrame, chan
 <title>Edmonton 311 Insights</title>
 <meta name="description" content="Data pipeline and dashboard analyzing City of Edmonton 311 service requests, with a machine-learning volume forecast.">
 <style>
-  :root {{ --text:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#f9fafb; --accent:#2563eb; }}
+  :root {{ --text:#14213d; --muted:#6b7280; --border:#e5e7eb; --bg:#f3f5f9; --accent:#0057b8; }}
   * {{ box-sizing: border-box; }}
-  body {{ margin:0; font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--text); background:var(--bg); }}
-  .wrap {{ max-width:1180px; margin:0 auto; padding:28px 16px 56px; }}
-  h1 {{ margin:0; font-size:30px; letter-spacing:-.4px; }}
-  .lead {{ color:var(--muted); max-width:780px; margin:6px 0 0; }}
-  .meta {{ font-size:13px; color:var(--muted); margin-top:8px; }}
-  a {{ color:var(--accent); }}
-  .kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:22px 0; }}
-  .kpi {{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 16px; }}
-  .kpi b {{ display:block; font-size:26px; }}
-  .kpi span {{ color:var(--muted); font-size:13px; }}
+  body {{ margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--text); background:var(--bg); }}
+  header {{ background:#0b2545; color:#fff; padding:22px 28px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px; }}
+  header h1 {{ margin:0; font-size:26px; letter-spacing:-.3px; }}
+  header p {{ margin:2px 0 0; color:#a9bcd6; font-size:14px; }}
+  header .meta {{ font-size:13px; color:#a9bcd6; }}
+  header a {{ color:#fff; }}
+  .wrap {{ max-width:1200px; margin:0 auto; padding:20px 20px 40px; }}
+  .kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }}
+  .kpi {{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 18px; }}
+  .kpi span {{ display:block; color:var(--muted); font-size:13px; }}
+  .kpi b {{ font-size:28px; letter-spacing:-.5px; }}
   .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }}
   .card {{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px; min-width:0; }}
   .wide {{ grid-column:1/-1; }}
-  h2 {{ font-size:18px; margin:30px 0 10px; }}
-  table {{ width:100%; border-collapse:collapse; font-size:14px; background:#fff; }}
+  h2 {{ font-size:16px; margin:0 0 8px; }}
+  table {{ width:100%; border-collapse:collapse; font-size:14px; }}
   th, td {{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--border); }}
-  th {{ color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }}
-  .notes {{ color:#374151; }}
-  .notes li {{ margin-bottom:6px; }}
-  code {{ background:#eef2ff; padding:1px 5px; border-radius:4px; font-size:13px; }}
+  th {{ color:var(--muted); font-weight:600; font-size:12px; }}
+  footer {{ text-align:center; color:var(--muted); font-size:13px; padding:0 16px 28px; }}
+  footer a {{ color:var(--accent); }}
   @media (max-width: 820px) {{ .kpis {{ grid-template-columns:1fr 1fr; }} .grid {{ grid-template-columns:1fr; }} }}
 </style></head>
-<body><div class="wrap">
-  <h1>Edmonton 311 Insights</h1>
-  <p class="lead">An automated Python data pipeline over the City of Edmonton's open 311 service-request data:
-  extraction from the Socrata API, cleaning with pandas, a SQLite warehouse queried with SQL, and a
-  scikit-learn model that forecasts daily request volume.</p>
-  <div class="meta">Last refreshed {updated} by GitHub Actions ·
-    <a href="https://github.com/shucab-lane/edmonton-311-insights">Source code</a> ·
-    Data: <a href="https://data.edmonton.ca/City-Administration/311-Requests/q7ua-agfg">City of Edmonton Open Data</a></div>
-
+<body>
+<header>
+  <div>
+    <h1>Edmonton 311 Insights</h1>
+    <p>What Edmontonians ask the city for, and when</p>
+  </div>
+  <div class="meta">Updated {updated}</div>
+</header>
+<div class="wrap">
   <div class="kpis">{kpi_html}</div>
 
   <div class="grid">
     <div class="card wide">{charts[0]}</div>
-    <div class="card wide">{charts[1]}</div>
     <div class="card">{charts[2]}</div>
     <div class="card">{charts[3]}</div>
     <div class="card">{charts[4]}</div>
     <div class="card">{charts[5]}</div>
+    <div class="card wide" style="padding:16px">
+      <h2>Most common requests (last {stats.get('recent_days', 60)} days)</h2>
+      {_table(top_types, {"service_description": "Request", "service_area": "Department", "requests": "Count"})}
+    </div>
   </div>
-
-  <h2>Most common request types (last {stats['recent_requests']:,} requests)</h2>
-  {_table(top_types, {"service_description": "Request type", "service_area": "Service area", "requests": "Requests"})}
-
-  <h2>Data quality checks (recent window)</h2>
-  {_table(pd.DataFrame([quality]), {"rows": "Rows", "missing_close_date_pct": "% still open / no close date",
-                                     "negative_durations": "Negative durations (dropped)", "unknown_ward_pct": "% unknown ward"})}
-
-  <h2>Method</h2>
-  <ul class="notes">
-    <li><b>Extract:</b> 3+ years of history are aggregated on the server with SoQL <code>GROUP BY</code> queries
-      (thousands of rows instead of millions); request-level rows are paged in only for the last {stats.get('recent_days', 60)} days.
-      Requests retry with exponential backoff on rate limits and server errors.</li>
-    <li><b>Transform:</b> pandas normalizes inconsistent category text, parses timestamps, computes time-to-close and
-      drops duplicates and negative durations.</li>
-    <li><b>Load + analyze:</b> data lands in a SQLite warehouse with primary keys, CHECK constraints and indexes;
-      the charts come from SQL queries using CTEs and window functions (<code>RANK() OVER</code>, <code>SUM() OVER (PARTITION BY)</code>).</li>
-    <li><b>Forecast:</b> a gradient-boosting regressor on calendar and lag features (each at least 7 days old, so nothing
-      leaks from the future), evaluated on the last 8 weeks against a "same weekday last week" baseline:
-      MAE {fc.model_mae:.0f} vs {fc.baseline_mae:.0f} requests/day ({fc.improvement_pct:.0f}% lower error).</li>
-    <li><b>Automation:</b> a scheduled GitHub Actions workflow re-runs the pipeline and the pytest suite every week and redeploys this page.</li>
-  </ul>
-</div></body></html>"""
+</div>
+<footer>
+  Data: <a href="https://data.edmonton.ca/City-Administration/311-Requests/q7ua-agfg">City of Edmonton Open Data</a>
+  · <a href="https://github.com/shucab-lane/edmonton-311-insights">Source on GitHub</a>
+</footer>
+</body></html>"""
     (path / "index.html").write_text(page, encoding="utf-8")
     (path / ".nojekyll").write_text("", encoding="utf-8")
