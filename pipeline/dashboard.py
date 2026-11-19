@@ -129,6 +129,7 @@ def build(path: Path, stats: dict, fc: ForecastResult, areas: pd.DataFrame, chan
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edmonton 311 Insights</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b2545'/%3E%3C/svg%3E">
 <meta name="description" content="Data pipeline and dashboard analyzing City of Edmonton 311 service requests, with a machine-learning volume forecast.">
 <style>
   :root {{ --text:#14213d; --muted:#6b7280; --border:#e5e7eb; --bg:#f3f5f9; --accent:#0057b8; }}
